@@ -1,35 +1,57 @@
 # WebRtc, Coturn, SignalR and Blazor WebAssembly
-Blazor WebAssembly offers a compelling environment on which to develop peer-to-peer applications. The browser is the ultimate in no-install ease of use, and WASM is blazingly fast.
 
-In our sample application, we stream video over WebRTC in a Blazor WebAssembly application using javascript interop and SignalR as the WebRTC signaling channel. There are two approaches used in this application.
+Blazor WebAssembly는 피어 투 피어 애플리케이션을 개발할 수 있는 강력한 환경을 제공합니다. 
+이 브라우저는 설치가 필요 없는 최고의 사용 편의성을 제공하며, WASM은 놀라울 정도로 빠릅니다.
 
-First, in Index.razor, we use a code-behind JS file which interacts with the elements on the razor page directly. This makes it easy to set the stream on the video directly, rather than passing complex objects through Blazor to be used in other js calls through interop. Also, the Index.razor.js sample makes much more use of the .then() pattern, as opposed to async/await.
+샘플 애플리케이션에서는 자바스크립트 인터롭과 SignalR을 WebRTC 시그널링 채널로 사용하여 Blazor WebAssembly 애플리케이션에서 WebRTC를 통해 비디오를 스트리밍합니다. 
+이 애플리케이션에는 두 가지 접근 방식이 사용됩니다.
 
-Since the Google samples were written using the .then() pattern, I wanted to refactor the code to async/await as a good example of a straight conversion. 
+첫째, Index.razor에서는 레이저 페이지의 요소와 직접 상호 작용하는 코드 비하인드 JS 파일을 사용합니다. 
+이렇게 하면 인터롭을 통해 다른 js 호출에서 사용할 복잡한 객체를 Blazor를 통해 전달하지 않고도 비디오에서 직접 스트림을 설정할 수 있습니다. 
+또한 Index.razor.js 샘플은 비동기/대기 대신 .then() 패턴을 훨씬 더 많이 사용합니다.
 
-WebRTCService shows a more service-oriented approach on the Blazor size, and a more modern async/await pattern in the javascript. The accompanying javascript is placed in wwwroot, rather than alongside the coupled WebRTCService Blazor class. The WebRTCService is added to services in program.cs, and used in Rtc.razor/Rtc.razor.js.
+Google 샘플은 .then() 패턴을 사용하여 작성되었기 때문에 코드를 async/await으로 리팩터링하여 바로 변환하는 좋은 예로 삼고 싶었습니다. 
 
-This pair of classes is very slim. Almost all the heavy lifting is done in WebRTCService.
-One note: WebRTCService has a standard .net event. This should be replaced with a weak event. I normally use PeanutButter.TinyEventAggregator.
+WebRTCService는 블레이저 크기에서 보다 서비스 지향적인 접근 방식을 보여주며, 자바스크립트에서는 보다 현대적인 비동기/대기 패턴을 사용합니다. 
+함께 제공되는 자바스크립트는 결합된 WebRTCService 블레이저 클래스와 함께 있는 것이 아니라 wwwroot에 배치됩니다. 
+WebRTCService는 program.cs의 서비스에 추가되고 Rtc.razor/Rtc.razor.js에서 사용됩니다.
+
+이 클래스 쌍은 매우 간결합니다. 
+거의 모든 무거운 작업은 WebRTCService에서 수행됩니다.
+한 가지 참고 사항: WebRTCService에는 표준 .net 이벤트가 있습니다. 
+이것은 약한 이벤트로 대체해야 합니다. 
+저는 보통 PeanutButter.TinyEventAggregator를 사용합니다.
+
 
 ## WebRTC
-To make a WebRTC call, you create a RTCPeerConnection(options) in JavaScript and call CreateOffer(options) on that. The offer that gets created must be sent to the other party. When they receive the offer, they create a RTCPeerConnection and setRemoteDescription(offer) on it. The sender also sends connection candidates, which the receiver passes to addIceCandidate(candidate) on RTCPeerConnection. Next, they call createAnswer() and send it back to the original party. Once the answer is received by the original person, we have everything we need to create a WebRTC connection.
+WebRTC 호출을 하려면 자바스크립트에서 RTCPeerConnection(옵션)을 생성하고 이를 기반으로 CreateOffer(옵션)를 호출합니다. 
+생성된 오퍼는 상대방에게 전송되어야 합니다. 
+상대방은 오퍼를 받으면 RTCPeerConnection을 생성하고 그 위에 setRemoteDescription(오퍼)을 설정합니다. 
+또한 발신자는 연결 후보를 전송하고, 수신자는 이를 RTCPeerConnection의 addIceCandidate(후보)에 전달합니다. 
+그런 다음 createAnswer()를 호출하여 원래 당사자에게 다시 보냅니다. 
+원래 상대방이 응답을 받으면 WebRTC 연결을 만드는 데 필요한 모든 것을 갖추게 됩니다.
 
 ## Signaling
-The offer, answer, and connection candidates must be sent back and forth between offeror and answerer. This is called 'signaling'. In our case, the Blazor app is connected to an Asp.Net Core webserver with SignalR installed. A single hub, MessageHub handles all SignalR traffic too and from the parties, using a very simple named channel.
+오퍼, 답변, 연결 후보를 오퍼자와 답변자 간에 주고받아야 합니다. 
+이를 '시그널링'이라고 합니다. 
+저희의 경우, 블레이저 앱은 SignalR이 설치된 Asp.Net Core 웹서버에 연결되어 있습니다. 
+단일 허브인 MessageHub는 매우 간단한 이름의 채널을 사용하여 모든 SignalR 트래픽을 양 당사자 간에 처리합니다.
 
 ## Coturn
-WebRTC needs a Stun/Turn server to get around firewalls. 
-The easiest way to install Coturn is on a Linux server with Docker. A command to bring up a Coturn server in a single command is. 
+WebRTC는 방화벽을 우회하기 위해 스턴/턴 서버가 필요합니다. 
+Coturn을 설치하는 가장 쉬운 방법은 Docker가 설치된 Linux 서버에 설치하는 것입니다. 
+명령 한 번으로 코턴 서버를 불러올 수 있는 명령은 다음과 같습니다. 
 
 `docker run -d --network=host coturn/coturn -n --log-file=stdout --external-ip='$(detect-external-ip)' --relay-ip='$(detect-external-ip)'`
 
-Running Coturn in this way sets up stun/turn on the server over port 3478. Stun servers typically don't take credentials, but Turn relays are way more expensive, so they usually have a password. This should be changed in production, but the defaults are:
+이 방법으로 코턴을 실행하면 포트 3478을 통해 서버에 스턴/턴을 설정합니다. 
+스턴 서버는 일반적으로 자격 증명을 요구하지 않지만 턴 릴레이는 훨씬 더 비싸기 때문에 보통 비밀번호를 요구합니다. 
+이는 프로덕션 환경에서 변경해야 하지만 기본값은 다음과 같습니다:
 
             username: 'username'
             credential: 'password'
 
-Note that some documentation has this listed as 'credentials' with an 's'. WRONG.
+일부 문서에는 's'가 붙은 '자격증명'으로 표시되어 있습니다. 틀렸습니다.
 
             credentials: 'password'
  
